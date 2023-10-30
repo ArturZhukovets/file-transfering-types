@@ -1,4 +1,5 @@
 import gzip
+import tempfile
 from io import BytesIO
 
 import brotli
@@ -27,7 +28,7 @@ def iter_and_brotli_compress(file_path) -> Iterator:
             chunk = f_obj.read(CHUNK_SIZE)
             if not chunk:
                 break
-            compressed_chunk = brotli.compress(chunk)
+            compressed_chunk = brotli.compress(chunk, mode=brotli.MODE_TEXT, quality=9)
             yield compressed_chunk
 
 
@@ -43,4 +44,17 @@ def iter_and_gzip_compress(file_path) -> Iterator:
     with open(file_path, 'rb') as f_obj:
         while chunk := f_obj.read(CHUNK_SIZE):
             yield gzip_chunk(chunk)
+
+
+def compress_file_brotli(file_path: str) -> str:
+    with tempfile.NamedTemporaryFile(delete=False, ) as tmp_file:
+        # tmp_file.name = file_path.split(".")[0] + ".tmp"
+        with open(file_path, 'rb') as f_obj:
+            while chunk := f_obj.read(CHUNK_SIZE):
+                compressed_chunk = brotli.compress(chunk, mode=brotli.MODE_TEXT, quality=9)
+                tmp_file.write(compressed_chunk)
+
+        tmp_file.flush()
+    return tmp_file.name
+
 

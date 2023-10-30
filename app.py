@@ -9,10 +9,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from starlette.responses import FileResponse
 
-from utils import iter_file, iter_file_2, iter_and_brotli_compress, iter_and_gzip_compress
+from utils import iter_file, iter_file_2, iter_and_brotli_compress, iter_and_gzip_compress, compress_file_brotli
 
 
 BASE_PATH = os.getcwd()
+
+if not os.path.exists(os.path.join(BASE_PATH, "static")):
+    os.mkdir(os.path.join(BASE_PATH, "static"))
+
+
 FILEPATH = os.path.join(BASE_PATH, "static/big_file.txt")
 print(FILEPATH)
 
@@ -65,6 +70,18 @@ def download_large_file_using_custom_brotli_header(request: Request):
         response.headers["Content-Encoding"] = "brotli-custom-header"
     else:
         response = StreamingResponse(iter_file(FILEPATH), media_type="application/octet-stream")
+    return response
+
+@app.get("/download_compressed_brotli_no_stream/", name="download_brotli_no_stream")
+def download_large_file_brotli_no_stream(request: Request):
+    accept_encoding = request.headers.get("Accept-encoding")
+    if accept_encoding and "br" in accept_encoding:
+        file_path = compress_file_brotli(FILEPATH)
+        response = FileResponse(file_path, media_type="application/octet-stream")
+        response.headers["Content-Disposition"] = f"attachment; filename={os.path.basename(FILEPATH)}"
+        response.headers["Content-Encoding"] = "br"
+    else:
+        response = FileResponse(FILEPATH, media_type="application/octet-stream")
     return response
 
 
